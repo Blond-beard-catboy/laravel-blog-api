@@ -1,58 +1,189 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Blog API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Простое API приложение «Блог» на Laravel 10+ с аутентификацией, постами, комментариями (включая вложенные), тегами и фильтрацией.
 
-## About Laravel
+## Требования
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Локальный запуск (без Docker)
+- PHP >= 8.1
+- Composer
+- SQLite (или PostgreSQL/MySQL)
+- Расширения PHP: `pdo_sqlite`, `pdo_pgsql`, `bcmath`, `ctype`, `json`, `mbstring`, `openssl`, `tokenizer`, `xml`
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Запуск через Docker
+- Docker
+- Docker Compose
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Установка и запуск
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Локальный запуск (без Docker)
 
 ```bash
-composer require laravel/boost --dev
+# Клонируйте репозиторий
+git clone https://github.com/Blond-beard-catboy/laravel-blog-api.git
+cd laravel-blog-api
 
-php artisan boost:install
+# Установите зависимости
+composer install
+
+# Скопируйте .env.example и настройте подключение к БД
+cp .env.example .env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Отредактируйте `.env`:
+- Для SQLite (по умолчанию): закомментируйте строки `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, установите `DB_CONNECTION=sqlite` и создайте файл `database/database.sqlite`.
+- Для PostgreSQL: укажите параметры подключения.
 
-## Contributing
+```bash
+# Сгенерируйте ключ приложения
+php artisan key:generate
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Выполните миграции
+php artisan migrate
 
-## Code of Conduct
+# Запустите сервер
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+API будет доступно по адресу: `http://127.0.0.1:8000/api`
 
-## Security Vulnerabilities
+### 2. Запуск через Docker
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# Клонируйте репозиторий
+git clone https://github.com/Blond-beard-catboy/laravel-blog-api.git
+cd laravel-blog-api
 
-## License
+# Соберите и запустите контейнеры
+docker-compose up -d --build
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Выполните миграции внутри контейнера
+docker exec -it laravel_app php artisan migrate
+```
+
+API будет доступно по адресу: `http://localhost:8080/api`
+
+> Примечание: в Docker-окружении файл `.env` не обязателен – переменные окружения берутся из `docker-compose.yml`. При желании вы можете создать `.env`, но значения из него переопределят настройки контейнера.
+
+## API эндпоинты
+
+Все запросы к API должны иметь префикс `/api`. Например: `http://127.0.0.1:8000/api/posts`.
+
+### Открытые маршруты (без авторизации)
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/register` | Регистрация пользователя |
+| POST | `/login` | Авторизация (возвращает токен) |
+| GET | `/posts` | Список постов (пагинация, фильтр по тегам) |
+| GET | `/posts/{id}` | Конкретный пост |
+| GET | `/posts/{id}/comments` | Комментарии к посту (с вложенностью) |
+
+### Защищённые маршруты (требуют токен `Authorization: Bearer <token>`)
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/logout` | Выход (инвалидация токена) |
+| POST | `/posts` | Создание поста |
+| PUT/PATCH | `/posts/{id}` | Редактирование поста (только автор) |
+| DELETE | `/posts/{id}` | Удаление поста (только автор) |
+| POST | `/comments` | Создание комментария |
+| PUT/PATCH | `/comments/{id}` | Редактирование комментария (только автор) |
+| DELETE | `/comments/{id}` | Удаление комментария (только автор) |
+
+## Примеры запросов (curl)
+
+### Регистрация
+```bash
+curl -X POST http://127.0.0.1:8000/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John","email":"john@example.com","password":"secret"}'
+```
+
+### Логин
+```bash
+curl -X POST http://127.0.0.1:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","password":"secret"}'
+```
+Ответ содержит токен. Далее используйте его как `$TOKEN`.
+
+### Создание поста (с тегами)
+```bash
+curl -X POST http://127.0.0.1:8000/api/posts \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"title":"Мой пост","content":"Текст","tags":[1,2]}'
+```
+
+### Список постов с пагинацией и фильтром по тегам
+```bash
+curl -X GET "http://127.0.0.1:8000/api/posts?page=1&tags[]=1"
+```
+
+### Создание корневого комментария
+```bash
+curl -X POST http://127.0.0.1:8000/api/comments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"post_id":1,"parent_id":null,"content":"Отличный пост!"}'
+```
+
+### Создание вложенного комментария (ответ на комментарий)
+```bash
+curl -X POST http://127.0.0.1:8000/api/comments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"post_id":1,"parent_id":3,"content":"Согласен!"}'
+```
+
+### Получение комментариев к посту (с вложенностью)
+```bash
+curl -X GET http://127.0.0.1:8000/api/posts/1/comments
+```
+
+### Редактирование поста (только автор)
+```bash
+curl -X PUT http://127.0.0.1:8000/api/posts/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"title":"Новый заголовок","content":"Новое содержание"}'
+```
+
+### Удаление поста
+```bash
+curl -X DELETE http://127.0.0.1:8000/api/posts/1 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Тестирование
+
+Вы можете импортировать коллекцию Postman или использовать приведённые выше команды `curl`. Убедитесь, что:
+- Неавторизованные пользователи могут только просматривать посты и комментарии.
+- Авторизованные пользователи могут создавать посты/комментарии.
+- Только автор может редактировать/удалять свой пост или комментарий.
+- Работает пагинация (параметр `page`).
+- Фильтрация по тегам через `tags[]=id1&tags[]=id2`.
+- Вложенные комментарии возвращаются древовидной структурой (поле `children`).
+
+## Структура базы данных (SQLite/PostgreSQL)
+
+- `users` – пользователи.
+- `posts` – посты (`user_id`, `title`, `content`).
+- `comments` – комментарии (`user_id`, `post_id`, `parent_id`, `content`).
+- `tags` – теги (`name`).
+- `post_tag` – связь many-to-many между постами и тегами.
+
+## Использованные технологии
+
+- Laravel 11
+- Laravel Sanctum (API-токены)
+- Eloquent ORM
+- API Resources
+- Form Requests для валидации
+- Policies для авторизации
+- PostgreSQL / SQLite
+- Docker Compose (опционально)
+
+## Лицензия
+
+Проект создан в рамках тестового задания. Распространяется свободно.
+```
